@@ -13,7 +13,7 @@ type ApiProvider = 'OpenAI' | 'Google' | 'Anthropic';
 
 const App: React.FC = () => {
   const [query, setQuery] = useState('');
-  const [response, setResponse] = useState('...');
+  const [response, setResponse] = useState('Welcome to AIutino! Enter a prompt to get started.');
   const [isThinking, setIsThinking] = useState(false);
   const [mode, setMode] = useState<Mode>('Normal');
   const [isListening, setIsListening] = useState(false);
@@ -53,8 +53,13 @@ const App: React.FC = () => {
     setQuery(e.target.value);
   };
 
-  const handleSubmit = async (text: string) => {
+  const handleSubmit = React.useCallback(async (text: string) => {
     if (!text.trim()) return;
+    if (!apiKey) {
+      setResponse('API key is not set. Please go to settings to add it.');
+      setStatus('Error');
+      return;
+    }
 
     setIsThinking(true);
     setResponse(`Thinking about "${text}" in ${mode} mode...`);
@@ -65,18 +70,27 @@ const App: React.FC = () => {
       setResponse(result.message);
       setStatus('Ready');
     } catch (error) {
-      console.error(error);
-      setResponse('Error fetching data.');
+      console.error('An error occurred during fetch:', error);
+      if (error instanceof Error) {
+        setResponse(`Error: ${error.message}`);
+      } else {
+        setResponse('An unknown error occurred.');
+      }
       setStatus('Error');
     } finally {
       setIsThinking(false);
       setQuery('');
     }
-  };
+  }, [apiKey, apiProvider, mode]);
 
   const handleCaptureScreen = async () => {
     if (!query.trim()) {
       setResponse('Please enter a prompt for the screenshot.');
+      return;
+    }
+    if (!apiKey) {
+      setResponse('API key is not set. Please go to settings to add it.');
+      setStatus('Error');
       return;
     }
 
@@ -90,8 +104,12 @@ const App: React.FC = () => {
       setResponse(result.message);
       setStatus('Ready');
     } catch (error) {
-      console.error(error);
-      setResponse('Error processing image.');
+      console.error('An error occurred during fetch with image:', error);
+      if (error instanceof Error) {
+        setResponse(`Error: ${error.message}`);
+      } else {
+        setResponse('An unknown error occurred.');
+      }
       setStatus('Error');
     } finally {
       setIsThinking(false);
