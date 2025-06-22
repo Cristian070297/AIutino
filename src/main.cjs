@@ -27,6 +27,13 @@ ipcMain.on('close-app', () => {
   app.quit();
 });
 
+ipcMain.on('resize-window', (event, { width, height }) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) {
+    win.setSize(width, height, true);
+  }
+});
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();

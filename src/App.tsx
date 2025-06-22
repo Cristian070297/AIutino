@@ -97,6 +97,12 @@ const App: React.FC = () => {
     setStatus(savedApiKey ? 'Ready' : 'Not Set');
   }, []);
 
+  useEffect(() => {
+    const width = 400;
+    const height = showSettings ? 600 : 350;
+    window.electron.ipcRenderer.send('resize-window', { width, height });
+  }, [showSettings]);
+
   const toggleListen = () => {
     if (isListening) {
       recognitionRef.current?.stop();
@@ -213,7 +219,7 @@ const App: React.FC = () => {
         </div>
 
         {showSettings && (
-          <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10">
+          <div className="pt-4">
             <Card className="w-[380px]">
               <div
                 className="grid grid-cols-3 items-center bg-gray-700 py-1 text-sm font-bold cursor-move"
