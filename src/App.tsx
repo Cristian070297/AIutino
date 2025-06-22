@@ -214,7 +214,7 @@ const App: React.FC = () => {
 
         {showSettings && (
           <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10">
-            <Card className="w-[400px]">
+            <Card className="w-[380px]">
               <div
                 className="grid grid-cols-3 items-center bg-gray-700 py-1 text-sm font-bold cursor-move"
                 style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
