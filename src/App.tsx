@@ -97,13 +97,14 @@ const App: React.FC = () => {
       >
         {/* Draggable Title Bar */}
         <div
-          className="relative bg-gray-700 text-center py-1 text-sm font-bold cursor-move"
+          className="grid grid-cols-3 items-center bg-gray-700 py-1 text-sm font-bold cursor-move"
           style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
         >
-          <span>AIutino - {mode}</span>
+          <div />
+          <span className="text-center">AIutino - {mode}</span>
           <button
             onClick={() => window.electron.ipcRenderer.send('close-app')}
-            className="absolute top-0 right-0 px-2 py-1 text-white bg-red-500 hover:bg-red-700"
+            className="justify-self-end h-full px-4 flex items-center text-white bg-red-500 hover:bg-red-700"
             style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           >
             X
