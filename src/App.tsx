@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from './components/retroui/Button';
 import { Select } from './components/retroui/Select';
 import { Textarea } from './components/retroui/Textarea';
@@ -7,6 +7,7 @@ import { Body } from './components/retroui/Body';
 import { RadioGroup } from './components/retroui/RadioGroup';
 import { Input } from './components/retroui/Input';
 import ApiManager from './api';
+import { startRecording, stopRecording, sendAudio } from './deepgram';
 
 type Mode = 'Normal' | 'Translation' | 'Summarization' | 'Math';
 type ApiProvider = 'OpenAI' | 'Google' | 'Anthropic';
@@ -17,37 +18,12 @@ const App: React.FC = () => {
   const [isThinking, setIsThinking] = useState(false);
   const [mode, setMode] = useState<Mode>('Normal');
   const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [apiProvider, setApiProvider] = useState<ApiProvider>('OpenAI');
   const [apiKey, setApiKey] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [status, setStatus] = useState('Ready');
 
-  useEffect(() => {
-    if ('webkitSpeechRecognition' in window) {
-      const recognition = new webkitSpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = 'en-US';
-
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        const transcript = event.results[0][0].transcript;
-        setQuery(transcript);
-        handleSubmit(transcript);
-      };
-
-      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error('Speech recognition error', event);
-        setIsListening(false);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      recognitionRef.current = recognition as SpeechRecognition;
-    }
-  }, []);
 
   const handleQueryChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setQuery(e.target.value);
@@ -152,12 +128,25 @@ const App: React.FC = () => {
     window.electron.ipcRenderer.send('resize-window', { width, height });
   }, [showSettings]);
 
-  const toggleListen = () => {
+  const toggleListen = async () => {
     if (isListening) {
-      recognitionRef.current?.stop();
+      mediaRecorder?.stop();
+      stopRecording();
       setIsListening(false);
     } else {
-      recognitionRef.current?.start();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = (e) => {
+        sendAudio(e.data);
+      };
+      recorder.start(1000);
+      setMediaRecorder(recorder);
+      startRecording((transcript) => {
+        setQuery(transcript);
+        if (transcript) {
+          handleSubmit(transcript);
+        }
+      });
       setIsListening(true);
     }
   };
