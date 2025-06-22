@@ -4,6 +4,7 @@ import { Select } from './components/retroui/Select';
 import { Textarea } from './components/retroui/Textarea';
 import { Card } from './components/retroui/Card';
 import { Body } from './components/retroui/Body';
+import ApiManager from './api';
 
 type Mode = 'Normal' | 'Translation' | 'Summarization' | 'Math';
 
@@ -45,18 +46,22 @@ const App: React.FC = () => {
     setQuery(e.target.value);
   };
 
-  const handleSubmit = (text: string) => {
+  const handleSubmit = async (text: string) => {
     if (!text.trim()) return;
 
     setIsThinking(true);
     setResponse(`Thinking about "${text}" in ${mode} mode...`);
 
-    // Simulate API call
-    setTimeout(() => {
-      setResponse(`Response for: "${text}"`);
+    try {
+      const result = await ApiManager.fetchData('some-api', 'your-endpoint');
+      setResponse(result.message);
+    } catch (error) {
+      console.error(error);
+      setResponse('Error fetching data.');
+    } finally {
       setIsThinking(false);
       setQuery('');
-    }, 2000);
+    }
   };
 
   const toggleListen = () => {
@@ -92,10 +97,17 @@ const App: React.FC = () => {
       >
         {/* Draggable Title Bar */}
         <div
-          className="bg-gray-700 text-center py-1 text-sm font-bold cursor-move"
+          className="relative bg-gray-700 text-center py-1 text-sm font-bold cursor-move"
           style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
         >
-          AIutino - {mode}
+          <span>AIutino - {mode}</span>
+          <button
+            onClick={() => window.electron.ipcRenderer.send('close-app')}
+            className="absolute top-0 right-0 px-2 py-1 text-white bg-red-500 hover:bg-red-700"
+            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+          >
+            X
+          </button>
         </div>
 
         {/* Response Area */}
@@ -136,14 +148,23 @@ const App: React.FC = () => {
             <option>Math</option>
           </Select>
 
-          <Button
-            onClick={toggleListen}
-            className={`px-2 py-1 text-xs ${
-              isListening ? 'bg-red-500 animate-pulse' : 'bg-blue-500'
-            }`}
-          >
-            {isListening ? 'Listening...' : 'Voice'}
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button
+              onClick={() => handleSubmit(query)}
+              className="px-2 py-1 text-xs bg-green-500"
+              disabled={isThinking}
+            >
+              Submit
+            </Button>
+            <Button
+              onClick={toggleListen}
+              className={`px-2 py-1 text-xs ${
+                isListening ? 'bg-red-500 animate-pulse' : 'bg-blue-500'
+              }`}
+            >
+              {isListening ? 'Listening...' : 'Voice'}
+            </Button>
+          </div>
         </div>
 
         {/* Status Bar */}
