@@ -1,33 +1,28 @@
-// In a real-world application, you would use a secure storage solution
-// for API tokens, such as electron-store or the system keychain.
-const apiTokens: { [key: string]: string } = {
-  'some-api': 'your-api-key-here',
-}
-
 class ApiManager {
-  private static instance: ApiManager
+  private static instance: ApiManager;
 
   private constructor() {}
 
   public static getInstance(): ApiManager {
     if (!ApiManager.instance) {
-      ApiManager.instance = new ApiManager()
+      ApiManager.instance = new ApiManager();
     }
-    return ApiManager.instance
+    return ApiManager.instance;
   }
 
-  public async fetchData(apiName: string, endpoint: string) {
-    const token = apiTokens[apiName]
-    if (!token) {
-      throw new Error(`API token for ${apiName} not found.`)
+  public async fetchData(apiProvider: string, apiKey: string, query: string, mode: string) {
+    if (!apiKey) {
+      throw new Error('API key not provided.');
     }
 
-    // In a real application, you would make a fetch request to the API
-    // using the token for authentication.
-    console.log(`Fetching data from ${apiName} at ${endpoint}`);
-    const response = await fetch(`https://jsonplaceholder.typicode.com/posts/1`);
-    const data = await response.json();
-    return { message: data.title };
+    // This is a mock implementation. In a real application, you would
+    // make a request to the selected provider's API.
+    console.log(`Fetching data from ${apiProvider} with query "${query}" in ${mode} mode.`);
+    
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    return { message: `Response for "${query}" from ${apiProvider}.` };
   }
 }
 

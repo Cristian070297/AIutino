@@ -4,9 +4,12 @@ import { Select } from './components/retroui/Select';
 import { Textarea } from './components/retroui/Textarea';
 import { Card } from './components/retroui/Card';
 import { Body } from './components/retroui/Body';
+import { RadioGroup } from './components/retroui/RadioGroup';
+import { Input } from './components/retroui/Input';
 import ApiManager from './api';
 
 type Mode = 'Normal' | 'Translation' | 'Summarization' | 'Math';
+type ApiProvider = 'OpenAI' | 'Google' | 'Anthropic';
 
 const App: React.FC = () => {
   const [query, setQuery] = useState('');
@@ -15,6 +18,10 @@ const App: React.FC = () => {
   const [mode, setMode] = useState<Mode>('Normal');
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const [apiProvider, setApiProvider] = useState<ApiProvider>('OpenAI');
+  const [apiKey, setApiKey] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
+  const [status, setStatus] = useState('Ready');
 
   useEffect(() => {
     if ('webkitSpeechRecognition' in window) {
@@ -51,18 +58,44 @@ const App: React.FC = () => {
 
     setIsThinking(true);
     setResponse(`Thinking about "${text}" in ${mode} mode...`);
+    setStatus('Processing');
 
     try {
-      const result = await ApiManager.fetchData('some-api', 'your-endpoint');
+      const result = await ApiManager.fetchData(apiProvider, apiKey, text, mode);
       setResponse(result.message);
+      setStatus('Ready');
     } catch (error) {
       console.error(error);
       setResponse('Error fetching data.');
+      setStatus('Error');
     } finally {
       setIsThinking(false);
       setQuery('');
     }
   };
+
+  const handleSaveSettings = () => {
+    if (!apiKey) {
+      alert('Please enter an API key.');
+      return;
+    }
+    localStorage.setItem('apiProvider', apiProvider);
+    localStorage.setItem('apiKey', apiKey);
+    setShowSettings(false);
+    setStatus(apiKey ? 'Ready' : 'Not Set');
+  };
+
+  useEffect(() => {
+    const savedProvider = localStorage.getItem('apiProvider') as ApiProvider;
+    const savedApiKey = localStorage.getItem('apiKey');
+    if (savedProvider) {
+      setApiProvider(savedProvider);
+    }
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+    }
+    setStatus(savedApiKey ? 'Ready' : 'Not Set');
+  }, []);
 
   const toggleListen = () => {
     if (isListening) {
@@ -169,9 +202,62 @@ const App: React.FC = () => {
         </div>
 
         {/* Status Bar */}
-        <div className="bg-gray-600 text-xs text-center py-1">
-          Status: {isThinking ? 'Processing' : 'Ready'}
+        <div className="bg-gray-600 text-xs text-center py-1 flex justify-between px-2">
+          <span>Status: {status}</span>
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="text-xs hover:underline"
+          >
+            Settings
+          </button>
         </div>
+
+        {showSettings && (
+          <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10">
+            <Card className="w-[400px]">
+              <div
+                className="grid grid-cols-3 items-center bg-gray-700 py-1 text-sm font-bold cursor-move"
+                style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+              >
+                <div />
+                <span className="text-center">Settings</span>
+                <button
+                  onClick={() => setShowSettings(false)}
+                  className="justify-self-end h-full px-4 flex items-center text-white bg-red-500 hover:bg-red-700"
+                  style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+                >
+                  X
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                <RadioGroup
+                  label="API Provider"
+                  options={['OpenAI', 'Google', 'Anthropic']}
+                  selectedValue={apiProvider}
+                  onChange={(value) => setApiProvider(value as ApiProvider)}
+                />
+                <Input
+                  label={`Enter ${apiProvider} API Key`}
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="sk-..."
+                />
+                <div className="flex justify-end space-x-2 pt-2">
+                  <Button
+                    onClick={() => setShowSettings(false)}
+                    className="bg-gray-600"
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSaveSettings} className="bg-blue-500">
+                    Save
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
       </Card>
     </Body>
   );

@@ -6,6 +6,9 @@ module.exports = {
   ],
   theme: {
     extend: {
+      colors: {
+        primary: '#00A9FF',
+      },
       fontFamily: {
         frutiger: [
           'Frutiger',
