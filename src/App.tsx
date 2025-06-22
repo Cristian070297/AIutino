@@ -74,6 +74,37 @@ const App: React.FC = () => {
     }
   };
 
+  const handleCaptureScreen = async () => {
+    if (!query.trim()) {
+      setResponse('Please enter a prompt for the screenshot.');
+      return;
+    }
+
+    setIsThinking(true);
+    setResponse('Capturing screen and analyzing...');
+    setStatus('Processing');
+
+    try {
+      const screenshot = await window.electron.captureScreen();
+      const result = await ApiManager.fetchDataWithImage(apiProvider, apiKey, query, screenshot);
+      setResponse(result.message);
+      setStatus('Ready');
+    } catch (error) {
+      console.error(error);
+      setResponse('Error processing image.');
+      setStatus('Error');
+    } finally {
+      setIsThinking(false);
+      setQuery('');
+    }
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(response);
+    setStatus('Copied to clipboard!');
+    setTimeout(() => setStatus('Ready'), 2000);
+  };
+
   const handleSaveSettings = () => {
     if (!apiKey) {
       alert('Please enter an API key.');
@@ -151,8 +182,16 @@ const App: React.FC = () => {
         </div>
 
         {/* Response Area */}
-        <div className="flex-grow p-2 bg-gray-900 overflow-y-auto text-sm">
+        <div className="flex-grow p-2 bg-gray-900 overflow-y-auto text-sm relative">
           <p className={isThinking ? 'animate-pulse' : ''}>{response}</p>
+          {response && response !== '...' && !isThinking && (
+            <Button
+              onClick={handleCopy}
+              className="absolute top-2 right-2 px-2 py-1 text-xs bg-gray-600 hover:bg-gray-500"
+            >
+              Copy
+            </Button>
+          )}
         </div>
 
         {/* Input Area */}
@@ -203,6 +242,13 @@ const App: React.FC = () => {
               }`}
             >
               {isListening ? 'Listening...' : 'Voice'}
+            </Button>
+            <Button
+              onClick={handleCaptureScreen}
+              className="px-2 py-1 text-xs bg-purple-500"
+              disabled={isThinking}
+            >
+              Capture Screen
             </Button>
           </div>
         </div>
