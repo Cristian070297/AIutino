@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hide scrollbars globally while maintaining scrolling functionality */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+*::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
+}
+
 body,
 html,
 #root {
@@ -10,6 +20,24 @@ html,
   padding: 0;
   background-color: transparent;
   font-family: 'VT323', monospace; /* A good pixel font */
+}
+
+/* Ensure uniform retro font across all components */
+* {
+  font-family: 'VT323', 'Courier New', monospace !important;
+}
+
+/* Slightly increase font size for better readability inside boxes/cards/containers */
+.card *, 
+[class*="card"] *, 
+[class*="bg-gray"] *, 
+[class*="border"] * {
+  font-size: calc(1em + 0.03em) !important;
+}
+
+/* Maintain consistent retro styling for inputs, buttons, and text */
+input, textarea, button, select, label, span, div, p, h1, h2, h3, h4, h5, h6 {
+  font-family: 'VT323', 'Courier New', monospace !important;
 }
 
 /* Retro button style */

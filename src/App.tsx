@@ -536,17 +536,15 @@ const App: React.FC = () => {
       return false;
     }
   };
-
   return (
     <Body>
       <Card
         className={`w-full h-full flex flex-col ${getModeColor()}`}
-        style={{ imageRendering: 'pixelated' }}
-      >
-        {/* Draggable Title Bar */}
+        style={{ imageRendering: 'pixelated', padding: '12px', boxSizing: 'border-box' }}
+      >        {/* Draggable Title Bar */}
         <div
           className="grid grid-cols-3 items-center bg-gray-700 py-1 text-sm font-bold cursor-move"
-          style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+          style={{ WebkitAppRegion: 'drag', padding: '8px' } as React.CSSProperties}
         >
           <div />
           <span className="text-center">AIutino - {mode}</span>
@@ -558,7 +556,7 @@ const App: React.FC = () => {
             X
           </button>
         </div>        {/* Response Area */}
-        <div className="flex-grow p-2 bg-gray-900 overflow-y-auto text-sm relative">
+        <div className="flex-grow bg-gray-900 overflow-y-auto text-sm relative" style={{ padding: '8px' }}>
           {mode === 'Coding' && typeof response === 'object' && response !== null ? (
             <CodingModeOutput
               problemTitle={response.problemTitle}
@@ -584,13 +582,14 @@ const App: React.FC = () => {
               Copy
             </Button>
           )}
-        </div>{/* Input Area */}
+        </div>        {/* Input Area */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
             handleSubmit(query);
           }}
-          className="p-2 bg-gray-700"
+          className="bg-gray-700"
+          style={{ padding: '8px' }}
         >
           <div className="space-y-2">            <Textarea
               value={query}
@@ -609,10 +608,8 @@ const App: React.FC = () => {
               </div>
             )}
           </div>
-        </form>
-
-        {/* Controls */}
-        <div className="flex items-center justify-between p-2 bg-gray-800">
+        </form>        {/* Controls */}
+        <div className="flex items-center justify-between bg-gray-800" style={{ padding: '8px' }}>
           <Select
             value={mode}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
@@ -667,7 +664,7 @@ const App: React.FC = () => {
             </Button>
           </div>
         </div>        {/* Status Bar */}
-        <div className="bg-gray-600 text-xs text-center py-1 flex justify-between px-2">
+        <div className="bg-gray-600 text-xs text-center flex justify-between" style={{ padding: '8px' }}>
           <span className={isListening ? 'text-red-400 animate-pulse' : ''}>
             Status: {status} {isListening && '🎤'}
           </span>
@@ -681,10 +678,9 @@ const App: React.FC = () => {
 
         {showSettings && (
           <div className="pt-4">
-            <Card className="w-[380px]">
-              <div
-                className="grid grid-cols-3 items-center bg-gray-700 py-1 text-sm font-bold cursor-move"
-                style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+            <Card className="w-[380px]">              <div
+                className="grid grid-cols-3 items-center bg-gray-700 text-sm font-bold cursor-move"
+                style={{ WebkitAppRegion: 'drag', padding: '8px' } as React.CSSProperties}
               >
                 <div />
                 <span className="text-center">Settings</span>
@@ -694,16 +690,26 @@ const App: React.FC = () => {
                   style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
                 >
                   X
-                </button>
-              </div>
-              <div className="p-4 space-y-4">                <RadioGroup
-                  label="API Provider"
-                  options={['OpenAI', 'Google', 'Anthropic']}
-                  selectedValue={apiProvider}
-                  onChange={(value) => setApiProvider(value as ApiProvider)}
-                />
+                </button>              </div>              <div className="space-y-4">                <div style={{ padding: '8px' }}>
+                  <RadioGroup
+                    label="API Provider"
+                    options={['OpenAI', 'Google', 'Anthropic']}
+                    selectedValue={apiProvider}
+                    onChange={(value) => setApiProvider(value as ApiProvider)}
+                  />
+                </div>
                 
-                <div className="space-y-2">
+                <div style={{ padding: '8px' }}>
+                  <Input
+                    label={`Enter ${apiProvider} API Key`}
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="sk-..."
+                  />
+                </div>
+                
+                <div className="space-y-2" style={{ padding: '8px' }}>
                   <label className="text-sm font-medium text-gray-200">
                     Language/Accent (for voice recognition)
                   </label>
@@ -731,14 +737,7 @@ const App: React.FC = () => {
                   </Select>
                 </div>
                 
-                <Input
-                  label={`Enter ${apiProvider} API Key`}
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-..."
-                />
-                <div className="flex justify-end space-x-2 pt-2">
+                <div className="flex justify-end space-x-2 pt-2" style={{ padding: '8px' }}>
                   <Button
                     onClick={() => setShowSettings(false)}
                     className="bg-gray-600"
