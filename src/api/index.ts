@@ -19,6 +19,29 @@ class ApiManager {
 
     console.log(`Fetching data from ${apiProvider} with query "${query}" in ${mode} mode.`);
 
+    if (mode === 'Coding') {
+      // Simulate dual solution output for Coding Mode
+      // In production, this should be replaced with actual LLM output parsing
+      return {
+        message: {
+          problemTitle: 'Sample Problem: Two Sum',
+          clarifyingQuestions: [
+            'Are input numbers always positive?',
+            'Can the same element be used twice?',
+            'Should the solution return indices or values?'
+          ],
+          edgeCases: [
+            { case: 'Empty input array', explanation: 'Should return no solution or error.' },
+            { case: 'No valid pair exists', explanation: 'Should handle gracefully.' },
+            { case: 'Multiple valid pairs', explanation: 'Should clarify which to return.' }
+          ],
+          optimalSolution: `def two_sum(nums, target):\n    lookup = {}\n    for i, num in enumerate(nums):\n        if target - num in lookup:\n            return [lookup[target - num], i]\n        lookup[num] = i` ,
+          bruteForceSolution: `def two_sum(nums, target):\n    for i in range(len(nums)):\n        for j in range(i+1, len(nums)):\n            if nums[i] + nums[j] == target:\n                return [i, j]` ,
+          language: 'python'
+        }
+      };
+    }
+
     return this.generateContent(apiProvider, apiKey, query, mode);
   }
 

@@ -8,13 +8,23 @@ import { RadioGroup } from './components/retroui/RadioGroup';
 import { Input } from './components/retroui/Input';
 import ApiManager from './api';
 import { startRecording, stopRecording, sendAudio } from './deepgram';
+import CodeBubble from './components/retroui/CodeBubble';
+import CodingModeOutput from './components/retroui/CodingModeOutput';
 
-type Mode = 'Normal' | 'Translation' | 'Summarization' | 'Math';
+type Mode = 'Normal' | 'Translation' | 'Summarization' | 'Coding';
 type ApiProvider = 'OpenAI' | 'Google' | 'Anthropic';
+type CodingModeResponse = {
+  problemTitle: string;
+  clarifyingQuestions: { question: string; answer: string }[];
+  edgeCases: { case: string; explanation?: string }[];
+  optimalSolution: string;
+  bruteForceSolution: string;
+  language?: string;
+};
 
 const App: React.FC = () => {
   const [query, setQuery] = useState('');
-  const [response, setResponse] = useState('Welcome to AIutino! Enter a prompt to get started.');
+  const [response, setResponse] = useState<string | CodingModeResponse>('Welcome to AIutino! Enter a prompt to get started.');
   const [isThinking, setIsThinking] = useState(false);
   const [mode, setMode] = useState<Mode>('Normal');
   const [isListening, setIsListening] = useState(false);
@@ -43,7 +53,28 @@ const App: React.FC = () => {
 
     try {
       const result = await ApiManager.fetchData(apiProvider, apiKey, text, mode);
-      setResponse(result.message);
+      console.log('DEBUG result.message:', result.message); // Debug log
+      if (mode === 'Coding') {
+        // Force mock CodingModeResponse for debug
+        setResponse({
+          problemTitle: 'Sample Problem: Two Sum',
+          clarifyingQuestions: [
+            { question: 'Are input numbers always positive?', answer: 'No, they can be any integers.' },
+            { question: 'Can the same element be used twice?', answer: 'No, each index can only be used once.' },
+            { question: 'Should the solution return indices or values?', answer: 'Return the indices of the two numbers.' }
+          ],
+          edgeCases: [
+            { case: 'Empty input array', explanation: 'Should return no solution or error.' },
+            { case: 'No valid pair exists', explanation: 'Should handle gracefully.' },
+            { case: 'Multiple valid pairs', explanation: 'Should clarify which to return.' }
+          ],
+          optimalSolution: `# Optimal Solution\ndef two_sum(nums, target):\n    # Create a dictionary to store previously seen numbers and their indices\n    lookup = {}\n    for i, num in enumerate(nums):\n        # Check if the complement (target - num) exists in the dictionary\n        if target - num in lookup:\n            # If found, return the indices of the two numbers\n            return [lookup[target - num], i]\n        # Store the current number and its index in the dictionary\n        lookup[num] = i\n\n# This approach is efficient (O(n) time) because it only requires a single pass through the list.\n# Space Complexity: O(n)\n# Time Complexity: O(n)` ,
+          bruteForceSolution: `# Brute-force Solution\ndef two_sum(nums, target):\n    # Check every possible pair of numbers\n    for i in range(len(nums)):\n        for j in range(i+1, len(nums)):\n            # If the pair sums to the target, return their indices\n            if nums[i] + nums[j] == target:\n                return [i, j]\n\n# This approach is simple but inefficient (O(n^2) time) because it checks all pairs.\n# Space Complexity: O(1)\n# Time Complexity: O(n^2)` ,
+          language: 'python'
+        });
+      } else {
+        setResponse(result.message);
+      }
       setStatus('Ready');
     } catch (error) {
       console.error('An error occurred during fetch:', error);
@@ -77,7 +108,26 @@ const App: React.FC = () => {
     try {
       const screenshot = await window.electron.captureScreen();
       const result = await ApiManager.fetchDataWithImage(apiProvider, apiKey, query, screenshot);
-      setResponse(result.message);
+      if (mode === 'Coding') {
+        setResponse({
+          problemTitle: 'Sample Problem: Two Sum',
+          clarifyingQuestions: [
+            { question: 'Are input numbers always positive?', answer: 'No, they can be any integers.' },
+            { question: 'Can the same element be used twice?', answer: 'No, each index can only be used once.' },
+            { question: 'Should the solution return indices or values?', answer: 'Return the indices of the two numbers.' }
+          ],
+          edgeCases: [
+            { case: 'Empty input array', explanation: 'Should return no solution or error.' },
+            { case: 'No valid pair exists', explanation: 'Should handle gracefully.' },
+            { case: 'Multiple valid pairs', explanation: 'Should clarify which to return.' }
+          ],
+          optimalSolution: `# Optimal Solution\ndef two_sum(nums, target):\n    # Create a dictionary to store previously seen numbers and their indices\n    lookup = {}\n    for i, num in enumerate(nums):\n        # Check if the complement (target - num) exists in the dictionary\n        if target - num in lookup:\n            # If found, return the indices of the two numbers\n            return [lookup[target - num], i]\n        # Store the current number and its index in the dictionary\n        lookup[num] = i\n\n# This approach is efficient (O(n) time) because it only requires a single pass through the list.\n# Space Complexity: O(n)\n# Time Complexity: O(n)` ,
+          bruteForceSolution: `# Brute-force Solution\ndef two_sum(nums, target):\n    # Check every possible pair of numbers\n    for i in range(len(nums)):\n        for j in range(i+1, len(nums)):\n            # If the pair sums to the target, return their indices\n            if nums[i] + nums[j] == target:\n                return [i, j]\n\n# This approach is simple but inefficient (O(n^2) time) because it checks all pairs.\n# Space Complexity: O(1)\n# Time Complexity: O(n^2)` ,
+          language: 'python'
+        });
+      } else {
+        setResponse(result.message);
+      }
       setStatus('Ready');
     } catch (error) {
       console.error('An error occurred during fetch with image:', error);
@@ -94,7 +144,23 @@ const App: React.FC = () => {
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(response);
+    if (typeof response === 'string') {
+      navigator.clipboard.writeText(response);
+    } else {
+      // Copy all code blocks if CodingModeResponse
+      const allCode = [
+        response.problemTitle,
+        'Clarifying Questions:',
+        ...response.clarifyingQuestions,
+        'Edge Cases to Consider:',
+        ...response.edgeCases.map(ec => `${ec.case}${ec.explanation ? ' — ' + ec.explanation : ''}`),
+        'Optimal Solution:',
+        response.optimalSolution,
+        'Brute-force Solution:',
+        response.bruteForceSolution
+      ].join('\n\n');
+      navigator.clipboard.writeText(allCode);
+    }
     setStatus('Copied to clipboard!');
     setTimeout(() => setStatus('Ready'), 2000);
   };
@@ -159,7 +225,7 @@ const App: React.FC = () => {
         return 'border-green-500';
       case 'Summarization':
         return 'border-yellow-500';
-      case 'Math':
+      case 'Coding':
         return 'border-red-500';
       default:
         return 'border-gray-600';
@@ -190,7 +256,18 @@ const App: React.FC = () => {
 
         {/* Response Area */}
         <div className="flex-grow p-2 bg-gray-900 overflow-y-auto text-sm relative">
-          <p className={isThinking ? 'animate-pulse' : ''}>{response}</p>
+          {mode === 'Coding' && typeof response === 'object' && response !== null ? (
+            <CodingModeOutput
+              problemTitle={response.problemTitle}
+              clarifyingQuestions={response.clarifyingQuestions}
+              edgeCases={response.edgeCases}
+              optimalSolution={response.optimalSolution}
+              bruteForceSolution={response.bruteForceSolution}
+              language={response.language || 'python'}
+            />
+          ) : (
+            typeof response === 'string' && <p className={isThinking ? 'animate-pulse' : ''}>{response}</p>
+          )}
           {response && response !== '...' && !isThinking && (
             <Button
               onClick={handleCopy}
@@ -231,7 +308,7 @@ const App: React.FC = () => {
             <option>Normal</option>
             <option>Translation</option>
             <option>Summarization</option>
-            <option>Math</option>
+            <option>Coding</option>
           </Select>
 
           <div className="flex items-center space-x-2">
