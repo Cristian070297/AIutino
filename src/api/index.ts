@@ -44,15 +44,30 @@ class ApiManager {
 
     return this.generateContent(apiProvider, apiKey, query, mode);
   }
-
-  public async fetchDataWithImage(apiProvider: string, apiKey: string, prompt: string, image: string) {
+  public async fetchDataWithImage(apiProvider: string, apiKey: string, prompt: string, image: string, mode?: string) {
     if (!apiKey) {
       throw new Error('API key not provided.');
     }
 
-    console.log(`Fetching data from ${apiProvider} with prompt "${prompt}" and an image.`);
+    console.log(`Fetching data from ${apiProvider} with prompt "${prompt}" and an image in ${mode || 'Normal'} mode.`);
 
-    return this.generateContent(apiProvider, apiKey, prompt, 'Normal', image);
+    // Enhance prompt with mode-specific instructions if provided
+    let enhancedPrompt = prompt;
+    if (mode) {
+      switch (mode) {
+        case 'Translation':
+          enhancedPrompt = `${prompt}\n\nPlease provide a clear, formatted response showing:\n1. Original text identified\n2. Language detected\n3. Translation to English\n4. Any context or cultural notes`;
+          break;
+        case 'Summarization':
+          enhancedPrompt = `${prompt}\n\nPlease structure your summary with:\n1. Key points (bullet format)\n2. Main conclusions\n3. Important details`;
+          break;
+        case 'Coding':
+          enhancedPrompt = `${prompt}\n\nIf this contains a coding problem, please:\n1. Identify the problem type\n2. List key constraints\n3. Suggest solution approaches\n4. Provide code if appropriate`;
+          break;
+      }
+    }
+
+    return this.generateContent(apiProvider, apiKey, enhancedPrompt, 'Normal', image);
   }
 
   private async fetchOpenAI(apiKey: string, prompt: string, image?: string) {
@@ -174,9 +189,8 @@ class ApiManager {
       }
     }
   }
-
-  private async generateContent(apiProvider: string, apiKey: string, query: string, mode: string, image?: string) {
-    // The 'mode' parameter can be used to customize the prompt for different tasks
+  private async generateContent(apiProvider: string, apiKey: string, query: string, _mode: string, image?: string) {
+    // The '_mode' parameter can be used to customize the prompt for different tasks
     // For example, you could prepend "Translate the following text:" to the query if mode is 'Translation'.
     // For now, we'll just pass the query directly.
     
