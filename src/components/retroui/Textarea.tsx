@@ -13,23 +13,16 @@ export function Textarea({
   ...props
 }: TextareaProps) {
   return (
-    <div
-      className={cn(
-        "relative bg-gradient-to-br from-zinc-900/90 to-zinc-800/80 rounded-xl border-2 border-primary/70 shadow-lg p-1 flex flex-col gap-1",
-        className
-      )}
-    >
+    <div className={cn("space-y-2", className)}>
       {label && (
-        <label className="text-xs font-semibold text-primary/80 pl-2 pt-1 pb-0.5 select-none tracking-wide">
+        <label className="text-sm font-medium text-gray-200 block">
           {label}
         </label>
       )}
       <textarea
         placeholder={placeholder}
         rows={4}
-        className={cn(
-          "w-full bg-zinc-950/80 resize-none text-base text-white placeholder:text-zinc-400 px-4 py-2 rounded-lg border-none outline-none focus:ring-2 focus:ring-primary/60 shadow-inner shadow-zinc-900/40 transition-all duration-150 min-h-[96px]",
-        )}
+        className="w-full bg-gray-800 text-white placeholder:text-gray-400 px-3 py-2 border border-gray-600 rounded resize-none focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 min-h-[80px]"
         {...props}
       />
     </div>

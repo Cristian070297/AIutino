@@ -601,8 +601,8 @@ const App: React.FC = () => {
               }
               className="w-full"
               disabled={isThinking}
-              rows={mode === 'Summarization' ? 4 : 1}
-            />            {mode !== 'Normal' && (
+              rows={mode === 'Summarization' ? 6 : 3}
+            />{mode !== 'Normal' && (
               <div className="text-xs text-gray-400 flex items-center space-x-1">
                 <span>Auto-capture mode: {getAutoPromptForMode(mode).substring(0, 60)}...</span>
               </div>
