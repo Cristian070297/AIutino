@@ -1,6 +1,3 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
 /* Hide scrollbars globally while maintaining scrolling functionality */
 * {

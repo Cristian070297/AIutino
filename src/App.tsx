@@ -541,13 +541,12 @@ const App: React.FC = () => {
       <Card
         className={`w-full h-full flex flex-col ${getModeColor()}`}
         style={{ imageRendering: 'pixelated', padding: '12px', boxSizing: 'border-box' }}
-      >        {/* Draggable Title Bar */}
-        <div
+      >        {/* Draggable Title Bar */}        <div
           className="grid grid-cols-3 items-center bg-gray-700 py-1 text-xl font-bold cursor-move"
           style={{ WebkitAppRegion: 'drag', padding: '8px' } as React.CSSProperties}
         >
           <div />
-          <span className="text-center title-text whitespace-nowrap" style={{ fontSize: '1.5rem' }}>AIutino ({mode} Mode)</span>
+          <span className="title-text whitespace-nowrap" style={{ fontSize: '1.5rem', marginLeft: '-30px' }}>AIutino ({mode} Mode)</span>
           <button
             onClick={() => window.electron.ipcRenderer.send('close-app')}
             className="justify-self-end h-full px-4 flex items-center text-white bg-red-500 hover:bg-red-700"
