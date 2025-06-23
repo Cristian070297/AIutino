@@ -33,115 +33,101 @@ const App: React.FC = () => {
   const [apiKey, setApiKey] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [status, setStatus] = useState('Ready');
+  // Add state for screenshots
+  const [screenshots, setScreenshots] = useState<string[]>([]);
+  const maxScreenshots = 3;
 
 
   const handleQueryChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setQuery(e.target.value);
   };
 
-  const handleSubmit = React.useCallback(async (text: string) => {
-    if (!text.trim()) return;
-    if (!apiKey) {
-      setResponse('API key is not set. Please go to settings to add it.');
-      setStatus('Error');
-      return;
-    }
-
+  // Capture button: just capture and store, do not process
+  const handleCapture = async () => {
+    setStatus('Capturing...');
     setIsThinking(true);
-    setResponse(`Thinking about "${text}" in ${mode} mode...`);
-    setStatus('Processing');
-
     try {
-      const result = await ApiManager.fetchData(apiProvider, apiKey, text, mode);
-      console.log('DEBUG result.message:', result.message); // Debug log
-      if (mode === 'Coding') {
-        // Force mock CodingModeResponse for debug
-        setResponse({
-          problemTitle: 'Sample Problem: Two Sum',
-          clarifyingQuestions: [
-            { question: 'Are input numbers always positive?', answer: 'No, they can be any integers.' },
-            { question: 'Can the same element be used twice?', answer: 'No, each index can only be used once.' },
-            { question: 'Should the solution return indices or values?', answer: 'Return the indices of the two numbers.' }
-          ],
-          edgeCases: [
-            { case: 'Empty input array', explanation: 'Should return no solution or error.' },
-            { case: 'No valid pair exists', explanation: 'Should handle gracefully.' },
-            { case: 'Multiple valid pairs', explanation: 'Should clarify which to return.' }
-          ],
-          optimalSolution: `# Optimal Solution\ndef two_sum(nums, target):\n    # Create a dictionary to store previously seen numbers and their indices\n    lookup = {}\n    for i, num in enumerate(nums):\n        # Check if the complement (target - num) exists in the dictionary\n        if target - num in lookup:\n            # If found, return the indices of the two numbers\n            return [lookup[target - num], i]\n        # Store the current number and its index in the dictionary\n        lookup[num] = i\n\n# This approach is efficient (O(n) time) because it only requires a single pass through the list.\n# Space Complexity: O(n)\n# Time Complexity: O(n)` ,
-          bruteForceSolution: `# Brute-force Solution\ndef two_sum(nums, target):\n    # Check every possible pair of numbers\n    for i in range(len(nums)):\n        for j in range(i+1, len(nums)):\n            # If the pair sums to the target, return their indices\n            if nums[i] + nums[j] == target:\n                return [i, j]\n\n# This approach is simple but inefficient (O(n^2) time) because it checks all pairs.\n# Space Complexity: O(1)\n# Time Complexity: O(n^2)` ,
-          language: 'python'
-        });
-      } else {
-        setResponse(result.message);
-      }
+      const shot = await window.electron.captureScreen();
+      setScreenshots(prev => [...prev, shot]);
       setStatus('Ready');
-    } catch (error) {
-      console.error('An error occurred during fetch:', error);
-      if (error instanceof Error) {
-        setResponse(`Error: ${error.message}`);
-      } else {
-        setResponse('An unknown error occurred.');
-      }
+    } catch {
       setStatus('Error');
     } finally {
       setIsThinking(false);
-      setQuery('');
-    }
-  }, [apiKey, apiProvider, mode]);
-
-  const handleCaptureScreen = async () => {
-    if (!query.trim()) {
-      setResponse('Please enter a prompt for the screenshot.');
-      return;
-    }
-    if (!apiKey) {
-      setResponse('API key is not set. Please go to settings to add it.');
-      setStatus('Error');
-      return;
-    }
-
-    setIsThinking(true);
-    setResponse('Capturing screen and analyzing...');
-    setStatus('Processing');
-
-    try {
-      const screenshot = await window.electron.captureScreen();
-      const result = await ApiManager.fetchDataWithImage(apiProvider, apiKey, query, screenshot);
-      if (mode === 'Coding') {
-        setResponse({
-          problemTitle: 'Sample Problem: Two Sum',
-          clarifyingQuestions: [
-            { question: 'Are input numbers always positive?', answer: 'No, they can be any integers.' },
-            { question: 'Can the same element be used twice?', answer: 'No, each index can only be used once.' },
-            { question: 'Should the solution return indices or values?', answer: 'Return the indices of the two numbers.' }
-          ],
-          edgeCases: [
-            { case: 'Empty input array', explanation: 'Should return no solution or error.' },
-            { case: 'No valid pair exists', explanation: 'Should handle gracefully.' },
-            { case: 'Multiple valid pairs', explanation: 'Should clarify which to return.' }
-          ],
-          optimalSolution: `# Optimal Solution\ndef two_sum(nums, target):\n    # Create a dictionary to store previously seen numbers and their indices\n    lookup = {}\n    for i, num in enumerate(nums):\n        # Check if the complement (target - num) exists in the dictionary\n        if target - num in lookup:\n            # If found, return the indices of the two numbers\n            return [lookup[target - num], i]\n        # Store the current number and its index in the dictionary\n        lookup[num] = i\n\n# This approach is efficient (O(n) time) because it only requires a single pass through the list.\n# Space Complexity: O(n)\n# Time Complexity: O(n)` ,
-          bruteForceSolution: `# Brute-force Solution\ndef two_sum(nums, target):\n    # Check every possible pair of numbers\n    for i in range(len(nums)):\n        for j in range(i+1, len(nums)):\n            # If the pair sums to the target, return their indices\n            if nums[i] + nums[j] == target:\n                return [i, j]\n\n# This approach is simple but inefficient (O(n^2) time) because it checks all pairs.\n# Space Complexity: O(1)\n# Time Complexity: O(n^2)` ,
-          language: 'python'
-        });
-      } else {
-        setResponse(result.message);
-      }
-      setStatus('Ready');
-    } catch (error) {
-      console.error('An error occurred during fetch with image:', error);
-      if (error instanceof Error) {
-        setResponse(`Error: ${error.message}`);
-      } else {
-        setResponse('An unknown error occurred.');
-      }
-      setStatus('Error');
-    } finally {
-      setIsThinking(false);
-      setQuery('');
     }
   };
+
+  const handleSubmit = React.useCallback(async (text: string) => {
+    if (!apiKey) {
+      setResponse('API key is not set. Please go to settings to add it.');
+      setStatus('Error');
+      return;
+    }
+    setIsThinking(true);
+    setStatus('Processing');
+    try {
+      if (screenshots.length > 0) {
+        // Use prompt if provided, else default
+        let prompt = text.trim();
+        if (!prompt) {
+          prompt = mode === 'Coding' ? 'solve' : 'Analyze this screenshot';
+        }
+        // Only send the first screenshot for compatibility
+        const result = await ApiManager.fetchDataWithImage(apiProvider, apiKey, prompt, screenshots[0]);
+        setScreenshots([]);
+        if (mode === 'Coding') {
+          setResponse({
+            problemTitle: 'Sample Problem: Two Sum',
+            clarifyingQuestions: [
+              { question: 'Are input numbers always positive?', answer: 'No, they can be any integers.' },
+              { question: 'Can the same element be used twice?', answer: 'No, each index can only be used once.' },
+              { question: 'Should the solution return indices or values?', answer: 'Return the indices of the two numbers.' }
+            ],
+            edgeCases: [
+              { case: 'Empty input array', explanation: 'Should return no solution or error.' },
+              { case: 'No valid pair exists', explanation: 'Should handle gracefully.' },
+              { case: 'Multiple valid pairs', explanation: 'Should clarify which to return.' }
+            ],
+            optimalSolution: `# Optimal Solution\ndef two_sum(nums, target):\n    # Create a dictionary to store previously seen numbers and their indices\n    lookup = {}\n    for i, num in enumerate(nums):\n        # Check if the complement (target - num) exists in the dictionary\n        if target - num in lookup:\n            # If found, return the indices of the two numbers\n            return [lookup[target - num], i]\n        # Store the current number and its index in the dictionary\n        lookup[num] = i\n\n# This approach is efficient (O(n) time) because it only requires a single pass through the list.\n# Space Complexity: O(n)\n# Time Complexity: O(n)` ,
+            bruteForceSolution: `# Brute-force Solution\ndef two_sum(nums, target):\n    # Check every possible pair of numbers\n    for i in range(len(nums)):\n        for j in range(i+1, len(nums)):\n            # If the pair sums to the target, return their indices\n            if nums[i] + nums[j] == target:\n                return [i, j]\n\n# This approach is simple but inefficient (O(n^2) time) because it checks all pairs.\n# Space Complexity: O(1)\n# Time Complexity: O(n^2)` ,
+            language: 'python'
+          });
+        } else {
+          setResponse(result.message);
+        }
+      } else {
+        if (!text.trim()) return;
+        const result = await ApiManager.fetchData(apiProvider, apiKey, text, mode);
+        if (mode === 'Coding') {
+          setResponse({
+            problemTitle: 'Sample Problem: Two Sum',
+            clarifyingQuestions: [
+              { question: 'Are input numbers always positive?', answer: 'No, they can be any integers.' },
+              { question: 'Can the same element be used twice?', answer: 'No, each index can only be used once.' },
+              { question: 'Should the solution return indices or values?', answer: 'Return the indices of the two numbers.' }
+            ],
+            edgeCases: [
+              { case: 'Empty input array', explanation: 'Should return no solution or error.' },
+              { case: 'No valid pair exists', explanation: 'Should handle gracefully.' },
+              { case: 'Multiple valid pairs', explanation: 'Should clarify which to return.' }
+            ],
+            optimalSolution: `# Optimal Solution\ndef two_sum(nums, target):\n    # Create a dictionary to store previously seen numbers and their indices\n    lookup = {}\n    for i, num in enumerate(nums):\n        # Check if the complement (target - num) exists in the dictionary\n        if target - num in lookup:\n            # If found, return the indices of the two numbers\n            return [lookup[target - num], i]\n        # Store the current number and its index in the dictionary\n        lookup[num] = i\n\n# This approach is efficient (O(n) time) because it only requires a single pass through the list.\n# Space Complexity: O(n)\n# Time Complexity: O(n)` ,
+            bruteForceSolution: `# Brute-force Solution\ndef two_sum(nums, target):\n    # Check every possible pair of numbers\n    for i in range(len(nums)):\n        for j in range(i+1, len(nums)):\n            # If the pair sums to the target, return their indices\n            if nums[i] + nums[j] == target:\n                return [i, j]\n\n# This approach is simple but inefficient (O(n^2) time) because it checks all pairs.\n# Space Complexity: O(1)\n# Time Complexity: O(n^2)` ,
+            language: 'python'
+          });
+        } else {
+          setResponse(result.message);
+        }
+      }
+      setStatus('Ready');
+      setQuery('');
+    } catch (error) {
+      setResponse('An error occurred during fetch.');
+      setStatus('Error');
+    } finally {
+      setIsThinking(false);
+    }
+  }, [apiKey, apiProvider, mode, screenshots]);
 
   const handleCopy = () => {
     if (typeof response === 'string') {
@@ -313,6 +299,13 @@ const App: React.FC = () => {
 
           <div className="flex items-center space-x-2">
             <Button
+              onClick={handleCapture}
+              className="px-2 py-1 text-xs bg-purple-500"
+              disabled={isThinking || screenshots.length >= maxScreenshots}
+            >
+              {`Capture (${screenshots.length + 1}/${maxScreenshots})`}
+            </Button>
+            <Button
               onClick={() => handleSubmit(query)}
               className="px-2 py-1 text-xs bg-green-500"
               disabled={isThinking}
@@ -321,18 +314,23 @@ const App: React.FC = () => {
             </Button>
             <Button
               onClick={toggleListen}
-              className={`px-2 py-1 text-xs ${
-                isListening ? 'bg-red-500 animate-pulse' : 'bg-blue-500'
-              }`}
+              className={`px-2 py-1 text-xs ${isListening ? 'bg-red-500 animate-pulse' : 'bg-blue-500'}`}
             >
               {isListening ? 'Listening...' : 'Voice'}
             </Button>
             <Button
-              onClick={handleCaptureScreen}
-              className="px-2 py-1 text-xs bg-purple-500"
-              disabled={isThinking}
+              onClick={() => {
+                setResponse('Welcome to AIutino! Enter a prompt to get started.');
+                setScreenshots([]);
+                setQuery('');
+                setStatus('Ready');
+                setShowSettings(false);
+                window.electron.ipcRenderer.send('reload-app');
+              }}
+              className="px-2 py-1 text-xs bg-gray-500 hover:bg-blue-400 text-white"
+              title="Reload App"
             >
-              Capture Screen
+              Reload
             </Button>
           </div>
         </div>
