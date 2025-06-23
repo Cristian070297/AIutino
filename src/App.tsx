@@ -7,7 +7,7 @@ import { Body } from './components/retroui/Body';
 import { RadioGroup } from './components/retroui/RadioGroup';
 import { Input } from './components/retroui/Input';
 import ApiManager from './api';
-import { startRecording, stopRecording, sendAudio } from './deepgram';
+import { startRecording, stopRecording, sendAudio, getSocketState } from './deepgram';
 import CodingModeOutput from './components/retroui/CodingModeOutput';
 
 type Mode = 'Normal' | 'Translation' | 'Summarization' | 'Coding';
@@ -40,10 +40,11 @@ const App: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [apiProvider, setApiProvider] = useState<ApiProvider>('OpenAI');
-  const [apiKey, setApiKey] = useState('');
-  const [showSettings, setShowSettings] = useState(false);  const [status, setStatus] = useState('Ready');
+  const [apiKey, setApiKey] = useState('');  const [showSettings, setShowSettings] = useState(false);
+  const [status, setStatus] = useState('Ready');
   // Add state for screenshots
   const [screenshots, setScreenshots] = useState<string[]>([]);
+  const [language, setLanguage] = useState('en'); // Default to general English for best accent support
   const maxScreenshots = 3;
     // Context preservation state
   const [conversationContext, setConversationContext] = useState<ContextEntry[]>([]);
@@ -315,7 +316,6 @@ const App: React.FC = () => {
     setStatus('Copied to clipboard!');
     setTimeout(() => setStatus('Ready'), 2000);
   };
-
   const handleSaveSettings = () => {
     if (!apiKey) {
       alert('Please enter an API key.');
@@ -323,48 +323,183 @@ const App: React.FC = () => {
     }
     localStorage.setItem('apiProvider', apiProvider);
     localStorage.setItem('apiKey', apiKey);
+    localStorage.setItem('language', language);
     setShowSettings(false);
     setStatus(apiKey ? 'Ready' : 'Not Set');
   };
-
   useEffect(() => {
     const savedProvider = localStorage.getItem('apiProvider') as ApiProvider;
     const savedApiKey = localStorage.getItem('apiKey');
+    const savedLanguage = localStorage.getItem('language');
     if (savedProvider) {
       setApiProvider(savedProvider);
     }
     if (savedApiKey) {
       setApiKey(savedApiKey);
     }
+    if (savedLanguage) {
+      setLanguage(savedLanguage);
+    }
     setStatus(savedApiKey ? 'Ready' : 'Not Set');
   }, []);
-
   useEffect(() => {
     const width = 400;
     const height = showSettings ? 600 : 350;
     window.electron.ipcRenderer.send('resize-window', { width, height });
   }, [showSettings]);
-  const toggleListen = async () => {
+
+  // Cleanup effect for voice recording
+  useEffect(() => {
+    return () => {
+      if (isListening) {
+        mediaRecorder?.stop();
+        stopRecording();
+      }
+    };
+  }, [isListening, mediaRecorder]);  const toggleListen = async () => {
+    console.log('🎯 Voice button clicked! Current state:', isListening);
+    
     if (isListening) {
-      mediaRecorder?.stop();
-      stopRecording();
-      setIsListening(false);
-    } else {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      recorder.ondataavailable = (e) => {
-        sendAudio(e.data);
-      };
-      recorder.start(1000);
-      setMediaRecorder(recorder);
-      startRecording((transcript) => {
-        setQuery(transcript);
-        if (transcript) {
-          // Voice input automatically supports context preservation
-          handleSubmit(transcript);
+      // Stop recording
+      try {
+        console.log('🛑 Stopping recording...');
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          mediaRecorder.stop();
         }
-      });
-      setIsListening(true);
+        stopRecording();
+        setIsListening(false);
+        setStatus('Ready');
+        console.log('✅ Recording stopped successfully');
+      } catch (error) {
+        console.error('❌ Error stopping recording:', error);
+        setStatus('Error stopping');
+        setIsListening(false);
+      }
+    } else {
+      // Start recording
+      let stream: MediaStream;
+      try {
+        console.log('🎤 Starting recording process...');
+        
+        // First check if we have navigator.mediaDevices
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('Media devices not supported in this browser');
+        }
+        
+        // Check if microphones are available
+        const hasMicrophone = await checkMicrophoneAccess();
+        if (!hasMicrophone) {
+          throw new Error('No microphone devices found');
+        }
+        
+        setStatus('Getting microphone...');
+        
+        // Try different microphone configurations with fallbacks
+        try {
+          console.log('🔧 Trying optimized audio settings for accent recognition...');
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              sampleRate: 48000, // Increased for better quality and accent capture
+              channelCount: 1,
+              echoCancellation: true, // Keep echo cancellation for clarity
+              noiseSuppression: false, // Turn off to capture natural speech patterns
+              autoGainControl: true // Auto adjust for different speaking volumes
+            }
+          });
+        } catch (firstError) {
+          console.log('⚠️ Optimized settings failed, trying enhanced settings...', firstError);
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({ 
+              audio: {
+                sampleRate: 44100, // Fallback to standard high quality
+                echoCancellation: true,
+                noiseSuppression: false, // Keep off for sensitivity to accented speech
+                autoGainControl: true
+              }
+            });
+          } catch (secondError) {
+            console.log('⚠️ Enhanced settings failed, trying minimal settings...', secondError);
+            stream = await navigator.mediaDevices.getUserMedia({ 
+              audio: true
+            });
+          }
+        }
+        
+        console.log('🎵 Got microphone access');
+        setStatus('Connecting to Deepgram...');
+          // Start Deepgram first and wait for it to be ready
+        let deepgramReady = false;
+          startRecording((transcript) => {
+          console.log('🗣️ Got transcript:', transcript);
+          if (transcript && transcript.trim()) {
+            setQuery(transcript);
+            setStatus('Got: ' + transcript.substring(0, 30) + '...');
+            setTimeout(() => {
+              handleSubmit(transcript);
+            }, 500);
+          }
+        }, language);
+        
+        // Wait for Deepgram connection with timeout
+        console.log('⏳ Waiting for Deepgram to connect...');
+        for (let i = 0; i < 10; i++) {
+          await new Promise(resolve => setTimeout(resolve, 500));          // Check if connected (we'll need to export this)
+          if (getSocketState() === WebSocket.OPEN) {
+            deepgramReady = true;
+            console.log('✅ Deepgram is ready!');
+            break;
+          }
+        }
+        
+        if (!deepgramReady) {
+          throw new Error('Deepgram connection timeout');
+        }        // Start MediaRecorder with optimal settings for sensitivity
+        const recorder = new MediaRecorder(stream);
+        console.log('🎙️ Using optimized MediaRecorder for sensitivity');
+          recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            console.log('📼 Sending audio chunk:', e.data.size, 'bytes, type:', e.data.type);            console.log('📼 Audio blob details:', {
+              size: e.data.size,
+              type: e.data.type
+            });
+            sendAudio(e.data);
+          } else {
+            console.log('⚠️ Empty audio chunk received');
+          }
+        };
+        
+        recorder.onstart = () => console.log('▶️ Recorder started');        recorder.onstop = () => {
+          console.log('⏹️ Recorder stopped');
+          stream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+        };
+          recorder.start(250); // Smaller chunks (250ms) for faster response and better sensitivity
+        setMediaRecorder(recorder);
+        setIsListening(true);
+        setStatus('🎤 Listening... (speak normally)');
+        
+        console.log('✅ Recording started with enhanced sensitivity');
+          } catch (error) {
+        console.error('❌ Error starting recording:', error);
+        
+        // Provide specific error messages
+        let errorMessage = 'Microphone error';
+        if (error instanceof Error) {
+          if (error.message.includes('Permission denied')) {
+            errorMessage = 'Microphone permission denied';
+          } else if (error.message.includes('not found')) {
+            errorMessage = 'No microphone found';
+          } else if (error.message.includes('not supported')) {
+            errorMessage = 'Browser not supported';
+          } else if (error.message.includes('Deepgram')) {
+            errorMessage = 'Deepgram connection failed';
+          } else {
+            errorMessage = `Error: ${error.message}`;
+          }
+        }
+        
+        setStatus(errorMessage);
+        setIsListening(false);
+      }
     }
   };
 
@@ -380,6 +515,25 @@ const App: React.FC = () => {
         return 'border-red-500';
       default:
         return 'border-gray-600';
+    }
+  };
+
+  // Helper function to check microphone availability
+  const checkMicrophoneAccess = async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioInputs = devices.filter(device => device.kind === 'audioinput');
+      console.log('🎤 Available audio inputs:', audioInputs.length);
+      
+      if (audioInputs.length === 0) {
+        console.warn('⚠️ No audio input devices found');
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Error checking microphone access:', error);
+      return false;
     }
   };
 
@@ -486,13 +640,17 @@ const App: React.FC = () => {
               disabled={isThinking}
             >
               Submit
-            </Button>
-            <Button
-              onClick={toggleListen}
-              className={`px-2 py-1 text-xs ${isListening ? 'bg-red-500 animate-pulse' : 'bg-blue-500'}`}
-            >
-              {isListening ? 'Listening...' : 'Voice'}
             </Button>            <Button
+              onClick={toggleListen}
+              className={`px-2 py-1 text-xs ${
+                isListening 
+                  ? 'bg-red-500 animate-pulse border-red-300' 
+                  : 'bg-blue-500 hover:bg-blue-600'
+              }`}
+              disabled={isThinking}
+              title={isListening ? 'Click to stop listening' : 'Click to start voice input'}            >
+              {isListening ? 'Stop' : 'Voice'}
+            </Button><Button
               onClick={() => {
                 setResponse('Welcome to AIutino! Enter a prompt to get started.');
                 setScreenshots([]);
@@ -508,11 +666,11 @@ const App: React.FC = () => {
               Reload
             </Button>
           </div>
-        </div>
-
-        {/* Status Bar */}
+        </div>        {/* Status Bar */}
         <div className="bg-gray-600 text-xs text-center py-1 flex justify-between px-2">
-          <span>Status: {status}</span>
+          <span className={isListening ? 'text-red-400 animate-pulse' : ''}>
+            Status: {status} {isListening && '🎤'}
+          </span>
           <button
             onClick={() => setShowSettings(!showSettings)}
             className="text-xs hover:underline"
@@ -538,13 +696,41 @@ const App: React.FC = () => {
                   X
                 </button>
               </div>
-              <div className="p-4 space-y-4">
-                <RadioGroup
+              <div className="p-4 space-y-4">                <RadioGroup
                   label="API Provider"
                   options={['OpenAI', 'Google', 'Anthropic']}
                   selectedValue={apiProvider}
                   onChange={(value) => setApiProvider(value as ApiProvider)}
                 />
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-200">
+                    Language/Accent (for voice recognition)
+                  </label>
+                  <Select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    className="w-full"
+                  >
+                    <option value="en">English (General - Best for accents)</option>
+                    <option value="en-US">English (US)</option>
+                    <option value="en-GB">English (UK)</option>
+                    <option value="en-AU">English (Australian)</option>
+                    <option value="en-IN">English (Indian)</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="it">Italian</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="nl">Dutch</option>
+                    <option value="pl">Polish</option>
+                    <option value="ru">Russian</option>
+                    <option value="ja">Japanese</option>
+                    <option value="ko">Korean</option>
+                    <option value="zh">Chinese</option>
+                  </Select>
+                </div>
+                
                 <Input
                   label={`Enter ${apiProvider} API Key`}
                   type="password"
