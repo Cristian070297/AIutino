@@ -35,6 +35,11 @@ html,
   font-size: calc(1em + 0.03em) !important;
 }
 
+/* Title should be larger than other text */
+.title-text {
+  font-size: 1.5rem !important;
+}
+
 /* Maintain consistent retro styling for inputs, buttons, and text */
 input, textarea, button, select, label, span, div, p, h1, h2, h3, h4, h5, h6 {
   font-family: 'VT323', 'Courier New', monospace !important;
